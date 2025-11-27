@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>내 주변 성당 찾기</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* 모바일 화면 꽉 차게 설정 */
+        body, html { width: 100%; height: 100%; margin: 0; padding: 0; }
+        #map { width: 100%; height: 100%; }
+        #loading { position: absolute; top: 10px; left: 10px; z-index: 10; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body>
+
+<div id="loading">내 위치를 찾는 중...</div>
+<div id="map"></div>
+
+<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=YOUR_JAVASCRIPT_KEY&libraries=services"></script>
+
+<script>
+    var mapContainer = document.getElementById('map'); 
+    var mapOption = { 
+        center: new kakao.maps.LatLng(37.566826, 126.9786567), // 기본좌표(서울)
+        level: 5 // 지도 확대 레벨 (약 5km 반경 보기에 적당)
+    };
+
+    var map = new kakao.maps.Map(mapContainer, mapOption); 
+    var ps = new kakao.maps.services.Places(); 
+    var loadingDiv = document.getElementById('loading');
+
+    // 1. 내 위치 가져오기
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            var lat = position.coords.latitude; 
+            var lon = position.coords.longitude; 
+            var locPosition = new kakao.maps.LatLng(lat, lon); 
+
+            // 지도 중심을 내 위치로 이동
+            map.setCenter(locPosition);
+            loadingDiv.innerHTML = "내 주변 5km 성당을 검색합니다.";
+
+            // 내 위치 마커 표시 (파란색 기본 마커 등 커스텀 가능하지만 일단 생략)
+            var marker = new kakao.maps.Marker({  
+                map: map, 
+                position: locPosition 
+            }); 
+
+            // 2. 키워드로 주변 성당 검색 (반경 5000m = 5km)
+            var callback = function(result, status) {
+                if (status === kakao.maps.services.Status.OK) {
+                    loadingDiv.innerHTML = "검색 완료! 마커를 클릭해보세요.";
+                    for (var i=0; i<result.length; i++) {
+                        displayMarker(result[i]);
+                    }
+                } else {
+                    loadingDiv.innerHTML = "주변에 성당이 없거나 검색에 실패했습니다.";
+                }
+            };
+
+            // 검색 옵션: 내 위치 기준, 반경 5km, '성당' 키워드
+            ps.keywordSearch('성당', callback, {
+                location: locPosition,
+                radius: 5000
+            });
+
+        });
+    } else { 
+        loadingDiv.innerHTML = "GPS를 사용할 수 없습니다.";
+    }
+
+    // 3. 지도에 성당 마커 찍기 함수
+    function displayMarker(place) {
+        var marker = new kakao.maps.Marker({
+            map: map,
+            position: new kakao.maps.LatLng(place.y, place.x) 
+        });
+
+        // 마커 클릭 시 성당 이름 표시
+        kakao.maps.event.addListener(marker, 'click', function() {
+            var infowindow = new kakao.maps.InfoWindow({zIndex:1});
+            infowindow.setContent('<div style="padding:5px;font-size:12px;">' + place.place_name + '</div>');
+            infowindow.open(map, marker);
+        });
+    }
+</script>
+</body>
+</html>
