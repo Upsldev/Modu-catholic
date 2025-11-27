@@ -32,4 +32,98 @@
         };
 
         script.onerror = function() {
-            // 로드
+            // 로드 실패 시 (도메인 불일치 등)
+            alert("지도 로딩 실패!\n1. 도메인(URL)이 카카오 플랫폼에 등록되지 않았거나\n2. API 키가 잘못되었습니다.\n\n현재 주소를 카카오 개발자 사이트 'Web 플랫폼'에 등록해주세요.");
+            document.getElementById('loading').innerHTML = "지도 로드 실패 (새로고침 필요)";
+        };
+
+        document.head.appendChild(script);
+    }
+
+    // 2. 실제 지도를 그리고 위치를 찾는 함수
+    function initMap() {
+        var mapContainer = document.getElementById('map'); 
+        var loadingDiv = document.getElementById('loading');
+        
+        var mapOption = { 
+            center: new kakao.maps.LatLng(37.566826, 126.9786567), // 기본좌표(서울)
+            level: 5 
+        };
+
+        var map = new kakao.maps.Map(mapContainer, mapOption); 
+        var ps = new kakao.maps.services.Places(); 
+
+        // 3. 내 위치 가져오기 로직
+        if (navigator.geolocation) {
+            loadingDiv.innerHTML = "내 위치를 찾는 중...";
+            
+            navigator.geolocation.getCurrentPosition(function(position) {
+                var lat = position.coords.latitude; 
+                var lon = position.coords.longitude; 
+                var locPosition = new kakao.maps.LatLng(lat, lon); 
+
+                // 지도 중심 이동
+                map.setCenter(locPosition);
+                loadingDiv.innerHTML = "내 주변 5km 성당 검색 중...";
+
+                // 내 위치 마커
+                var marker = new kakao.maps.Marker({  
+                    map: map, 
+                    position: locPosition 
+                }); 
+
+                // 성당 검색 실행
+                searchPlaces(locPosition);
+
+            }, function(error) {
+                // GPS 차단하거나 실패했을 때
+                loadingDiv.innerHTML = "위치 정보를 가져올 수 없습니다. (권한 허용 필요)";
+                console.error(error);
+            });
+
+        } else { 
+            loadingDiv.innerHTML = "이 브라우저는 GPS를 지원하지 않습니다.";
+        }
+
+        // 4. 키워드 검색 및 마커 표시 함수
+        function searchPlaces(locPosition) {
+            var callback = function(result, status) {
+                if (status === kakao.maps.services.Status.OK) {
+                    loadingDiv.style.display = 'none'; // 로딩 박스 숨김
+                    for (var i=0; i<result.length; i++) {
+                        displayMarker(result[i]);
+                    }
+                } else if (status === kakao.maps.services.Status.ZERO_RESULT) {
+                    loadingDiv.innerHTML = "반경 5km 이내에 성당이 없습니다.";
+                } else {
+                    loadingDiv.innerHTML = "검색 중 오류가 발생했습니다.";
+                }
+            };
+
+            ps.keywordSearch('성당', callback, {
+                location: locPosition,
+                radius: 5000
+            });
+        }
+
+        // 5. 마커 출력 및 클릭 이벤트
+        function displayMarker(place) {
+            var marker = new kakao.maps.Marker({
+                map: map,
+                position: new kakao.maps.LatLng(place.y, place.x) 
+            });
+
+            kakao.maps.event.addListener(marker, 'click', function() {
+                var infowindow = new kakao.maps.InfoWindow({zIndex:1});
+                infowindow.setContent('<div style="padding:5px;font-size:12px;">' + place.place_name + '<br><a href="' + place.place_url + '" target="_blank">상세보기</a></div>');
+                infowindow.open(map, marker);
+            });
+        }
+    }
+
+    // 페이지 로드 시 실행 시작
+    window.onload = loadKakaoScript;
+
+</script>
+</body>
+</html>
