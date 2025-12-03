@@ -106,19 +106,45 @@
             });
         }
 
-        // 5. 마커 출력 및 클릭 이벤트
-        function displayMarker(place) {
-            var marker = new kakao.maps.Marker({
-                map: map,
-                position: new kakao.maps.LatLng(place.y, place.x) 
-            });
+        // 5. 마커 출력 및 클릭 이벤트 (수정된 버전)
+    function displayMarker(place) {
+        var marker = new kakao.maps.Marker({
+            map: map,
+            position: new kakao.maps.LatLng(place.y, place.x) 
+        });
 
-            kakao.maps.event.addListener(marker, 'click', function() {
-                var infowindow = new kakao.maps.InfoWindow({zIndex:1});
-                infowindow.setContent('<div style="padding:5px;font-size:12px;">' + place.place_name + '<br><a href="' + place.place_url + '" target="_blank">상세보기</a></div>');
-                infowindow.open(map, marker);
-            });
-        }
+        // 마커 클릭 시 보여줄 정보창 내용 (HTML/CSS 디자인 적용)
+        var content = '<div style="padding:10px; min-width:200px;">';
+        
+        // 1. 성당 이름
+        content +=    '<div style="font-weight:bold; margin-bottom:5px; font-size:14px;">' + place.place_name + '</div>';
+        
+        // 2. 주소 (도로명 주소 없으면 지번 주소 사용)
+        content +=    '<div style="font-size:12px; color:#555; margin-bottom:10px;">' + (place.road_address_name || place.address_name) + '</div>';
+        
+        // 3. 버튼 영역 (flexbox로 가로 배치)
+        content +=    '<div style="display:flex; gap: 5px;">';
+        
+        // [미사시간 버튼] - 아직 데이터가 없으므로 알림창(alert) 띄움
+        content +=      '<button onclick="alert(\'미사 시간 데이터베이스 구축 중입니다.\\n조금만 기다려주세요!\')" style="background-color:#4CAF50; color:white; border:none; padding:5px 10px; border-radius:4px; font-size:12px; cursor:pointer; flex:1;">미사시간</button>';
+        
+        // [홈페이지 버튼] - 카카오맵 상세페이지로 새창 이동
+        content +=      '<a href="' + place.place_url + '" target="_blank" style="background-color:#f1f1f1; color:black; text-decoration:none; padding:5px 10px; border-radius:4px; font-size:12px; border:1px solid #ccc; text-align:center; flex:1;">홈페이지</a>';
+        
+        content +=    '</div></div>';
+
+        // 닫기 가능한 정보창 생성
+        var infowindow = new kakao.maps.InfoWindow({
+            content: content,
+            zIndex: 1,
+            removable: true // 닫기 버튼(X) 추가
+        });
+
+        // 마커 클릭 이벤트
+        kakao.maps.event.addListener(marker, 'click', function() {
+            infowindow.open(map, marker);
+        });
+    }
     }
 
     // 페이지 로드 시 실행 시작
