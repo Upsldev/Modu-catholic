@@ -1,4 +1,19 @@
-requests
-beautifulsoup4
-firebase-admin
-playwright
+# =============================================================================
+# 평화의인사 (Peace-Greeting) - Python Dependencies
+# =============================================================================
+# Install: pip install -r requirements.txt
+
+# HTTP Requests
+requests>=2.31.0
+
+# HTML Parsing (for crawler)
+beautifulsoup4>=4.12.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Google Generative AI (Gemini)
+google-generativeai>=0.3.0
+
+# Firebase (optional, for mobile app backend)
+firebase-admin>=6.0.0

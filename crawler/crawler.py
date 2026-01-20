@@ -12,6 +12,7 @@ import os
 import argparse
 import logging
 import requests
+from datetime import datetime
 from requests.exceptions import Timeout, ConnectionError, RequestException
 from bs4 import BeautifulSoup
 
@@ -35,16 +36,16 @@ DEFAULT_HEADERS = {
 # Safety Limits (Defaults)
 DEFAULT_MAX_PAGES = 5
 DEFAULT_MAX_ITEMS = 100
-ABSOLUTE_MAX_PAGES = 50
-ABSOLUTE_MAX_ITEMS = 1000
+ABSOLUTE_MAX_PAGES = 200      # 전체 수집용 (약 100페이지 = 2000개)
+ABSOLUTE_MAX_ITEMS = 3000     # 전국 성당 수 고려
 
 # Retry Settings
 MAX_RETRIES = 3
 RETRY_DELAY = 5
 
-# Ethical Delay Range (seconds)
-DELAY_MIN = 1.0
-DELAY_MAX = 3.0
+# Ethical Delay Range (seconds) - 노후 서버 보호용
+DELAY_MIN = 2.0   # 최소 2초 대기
+DELAY_MAX = 4.0   # 최대 4초 대기
 
 # =============================================================================
 # LOGGING SETUP
@@ -112,9 +113,11 @@ class GoodNewsCrawler:
         time.sleep(delay)
 
     def _make_request(self, method, url, **kwargs):
-        """Makes an HTTP request with retry logic."""
+        """Makes an HTTP request with retry logic and adaptive throttling."""
         for attempt in range(1, MAX_RETRIES + 1):
             try:
+                start_time = time.time()
+                
                 response = requests.request(
                     method, 
                     url, 
@@ -123,10 +126,23 @@ class GoodNewsCrawler:
                     **kwargs
                 )
                 response.raise_for_status()
+                
+                # Adaptive throttling: if response took 5+ seconds, server is slow
+                elapsed = time.time() - start_time
+                if elapsed >= 5.0:
+                    self.logger.warning(f"⚠️ 서버 응답 느림 ({elapsed:.1f}초). 30초 대기 후 재개...")
+                    time.sleep(30)
+                elif elapsed >= 3.0:
+                    self.logger.info(f"서버 응답 지연 ({elapsed:.1f}초). 10초 추가 대기...")
+                    time.sleep(10)
+                
                 return response
                 
             except Timeout:
                 self.logger.error(f"Timeout on {url} (Attempt {attempt}/{MAX_RETRIES})")
+                # Server is overwhelmed, wait longer
+                self.logger.warning("⏸️ 서버 타임아웃. 60초 대기 후 재시도...")
+                time.sleep(60)
             except ConnectionError:
                 self.logger.error(f"Connection error on {url} (Attempt {attempt}/{MAX_RETRIES})")
             except RequestException as e:
@@ -314,7 +330,8 @@ class GoodNewsCrawler:
                         "priest": item.get('father', '').strip(),
                         "image_url": item.get('imgURL', '').strip(),
                         "foundation_date": "",
-                        "url": f"{MOBILE_DETAIL_URL}?app=goodnews&orgnum={orgnum}"
+                        "url": f"{MOBILE_DETAIL_URL}?app=goodnews&orgnum={orgnum}",
+                        "crawled_at": datetime.now().isoformat()  # Crawl timestamp
                     }
                     
                     # Optionally fetch additional details from detail page
