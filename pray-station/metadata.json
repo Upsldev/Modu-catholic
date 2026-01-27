@@ -1,0 +1,7 @@
+{
+  "name": "Copy of Pray-Station Mass Finder",
+  "description": "A serene companion app to find nearby Catholic Mass times and sanctuary locations, featuring a meditative map interface.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pray-Station - Meditative Altar</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    rel="stylesheet" />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+
+  <!-- Tailwind CSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "altar-parchment": "#f4f1e8",
+            "altar-sage": "#6b705c",
+            "altar-olive": "#a5a58d",
+            "altar-earth": "#4b483f",
+            "altar-gold": "#c5a059",
+            "wood-light": "#fdfbf7",
+            "wood-shade": "#efeadd",
+            "wood-dark": "#d4cec3",
+          },
+          fontFamily: {
+            "display": ["Manrope", "sans-serif"]
+          },
+          boxShadow: {
+            'bead-raised': '4px 4px 10px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.8)',
+            'bead-inset': 'inset 4px 4px 8px rgba(0,0,0,0.05), inset -2px -2px 6px rgba(255,255,255,0.6)',
+            'altar-frame': '0 0 0 16px #e2ddd0, 0 30px 60px rgba(0,0,0,0.15)',
+          },
+          animation: {
+            'slide-up': 'slideUp 0.4s ease-out forwards',
+            'fade-in': 'fadeIn 0.3s ease-out forwards',
+          },
+          keyframes: {
+            slideUp: {
+              '0%': { transform: 'translateY(100%)', opacity: '0' },
+              '100%': { transform: 'translateY(0)', opacity: '1' },
+            },
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' },
+            },
+          },
+        },
+      },
+    }
+  </script>
+
+  <style>
+    /* Material Symbols Settings */
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+    }
+
+    /* Body Base */
+    body {
+      background-color: #dad4c8;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    /* Map Parchment Filter - 양피지 질감 */
+    .map-texture {
+      filter: sepia(0.35) contrast(0.92) brightness(1.08) saturate(0.85);
+    }
+
+    /* Leaflet Container Override */
+    .leaflet-container {
+      background: #e8e4d8 !important;
+      font-family: 'Manrope', sans-serif;
+      height: 100% !important;
+      width: 100% !important;
+    }
+
+    /* Hide Leaflet Attribution */
+    .leaflet-control-attribution {
+      display: none !important;
+    }
+
+    /* Church Marker Container */
+    .church-marker-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    /* Church Label */
+    .church-label {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #4b483f;
+      white-space: nowrap;
+      margin-bottom: 6px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      border: 1px solid rgba(197, 160, 89, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .church-marker-container:hover .church-label {
+      background: #c5a059;
+      color: white;
+      transform: scale(1.05);
+    }
+
+    /* Custom Marker Styles */
+    .custom-marker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #a5a58d 0%, #6b705c 100%);
+      border: 3px solid rgba(197, 160, 89, 0.8);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 2px 4px rgba(0, 0, 0, 0.15);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .custom-marker:hover {
+      transform: scale(1.15);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .custom-marker.basilica {
+      background: linear-gradient(135deg, #c5a059 0%, #9a7b3c 100%);
+      width: 42px;
+      height: 42px;
+    }
+
+    .custom-marker .marker-icon {
+      color: white;
+      font-size: 18px;
+    }
+
+    /* Marker Shadow Dot */
+    .marker-shadow {
+      width: 20px;
+      height: 6px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 50%;
+      filter: blur(3px);
+      margin-top: 4px;
+    }
+
+    /* User Location Marker - 더 크고 또렷하게 */
+    .user-marker-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 80px;
+    }
+
+    /* 내 위치 라벨 */
+    .user-label {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      margin-bottom: 8px;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+      border: 2px solid white;
+      animation: labelBounce 2s ease-in-out infinite;
+    }
+
+    @keyframes labelBounce {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-3px);
+      }
+    }
+
+    .user-pulse {
+      position: absolute;
+      top: 28px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(37, 99, 235, 0.3);
+      animation: userPulse 2s ease-out infinite;
+    }
+
+    .user-dot {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      border: 4px solid white;
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @keyframes userPulse {
+      0% {
+        transform: scale(0.5);
+        opacity: 1;
+      }
+
+      100% {
+        transform: scale(2);
+        opacity: 0;
+      }
+    }
+
+    /* Prayer Bead Chain Decoration */
+    .prayer-bead-chain::before {
+      content: '';
+      position: absolute;
+      top: 10%;
+      bottom: 10%;
+      right: 2.5rem;
+      width: 2px;
+      background: linear-gradient(to bottom, transparent, #c5a059 20%, #c5a059 80%, transparent);
+      opacity: 0.3;
+      z-index: 10;
+    }
+
+    /* User Location Pulse */
+    @keyframes locationPulse {
+      0% {
+        transform: scale(1);
+        opacity: 0.75;
+      }
+
+      75%,
+      100% {
+        transform: scale(2);
+        opacity: 0;
+      }
+    }
+
+    .location-pulse {
+      animation: locationPulse 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+
+    /* 마커 클러스터 스타일 */
+    .cluster-marker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-weight: 700;
+      color: white;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      border: 3px solid white;
+      transition: transform 0.2s ease;
+    }
+
+    .cluster-marker:hover {
+      transform: scale(1.1);
+    }
+
+    .cluster-small {
+      width: 40px;
+      height: 40px;
+      font-size: 12px;
+      background: linear-gradient(135deg, #a5a58d 0%, #6b705c 100%);
+    }
+
+    .cluster-medium {
+      width: 50px;
+      height: 50px;
+      font-size: 14px;
+      background: linear-gradient(135deg, #c5a059 0%, #9a7b3c 100%);
+    }
+
+    .cluster-large {
+      width: 60px;
+      height: 60px;
+      font-size: 16px;
+      background: linear-gradient(135deg, #b45309 0%, #92400e 100%);
+    }
+
+    .custom-cluster-wrapper {
+      background: transparent !important;
+      border: none !important;
+    }
+  </style>
+</head>
+
+<body class="font-display">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
+</html>
